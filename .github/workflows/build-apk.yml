@@ -8,51 +8,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Set up Python + Java
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
+      # Java 17 нужен для Android SDK
+    - uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
 
-    - name: Install Buildozer and dependencies
+    - name: Install Buildozer
       run: |
-        python -m pip install --upgrade pip
+        pip install --upgrade pip
         pip install buildozer cython==0.29.37 kivy==2.3.0
 
-    - name: Initialize Buildozer
-      run: buildozer init
-
-    - name: Configure buildozer.spec
+    - name: Initialize Buildozer + force SDK download
       run: |
+        buildozer init
+        # Основные настройки
         sed -i 's/title = .*/title = Три Кота Аэрохоккей/' buildozer.spec
         sed -i 's/package.name = .*/package.name = trikotahockey/' buildozer.spec
         sed -i 's/source.include_exts = .*/source.include_exts = py,png,jpg,kv,atlas,wav,mp3,json/' buildozer.spec
         sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0/' buildozer.spec
         sed -i 's/orientation = .*/orientation = landscape/' buildozer.spec
-        sed -i 's/fullscreen = .*/fullscreen = 1/' buildozer.spec
         echo "android.accept_sdk_license = True" >> buildozer.spec
+        echo "android.sdk_components = platform-tools,platforms;android-34,build-tools;34.0.0" >> buildozer.spec
 
-    - name: Download Android SDK and accept licenses
+    - name: Force download and setup Android SDK + accept licenses
       run: |
-        # Устанавливаем переменные окружения
-        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        
-        # Создаём папки заранее
-        mkdir -p $ANDROID_HOME/cmdline-tools
-        
-        # Скачиваем command line tools (это создаст sdkmanager)
-        wget -O commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-        unzip commandlinetools.zip -d $ANDROID_HOME/cmdline-tools
-        mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-        
-        # Принимаем все лицензии
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-        
-        # Скачиваем необходимые пакеты (build-tools, platform-tools и т.д.)
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+        buildozer android update
+        # Принудительно принимаем все лицензии
+        yes | \~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        yes | \~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses || true
 
     - name: Build APK
       run: buildozer android debug
