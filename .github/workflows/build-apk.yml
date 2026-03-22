@@ -21,27 +21,27 @@ jobs:
         python -m pip install --upgrade pip
         pip install buildozer cython==0.29.37 kivy==2.3.0
 
-    - name: Accept all Android SDK licenses
-      run: |
-        # Создаём директорию для лицензий
-        mkdir -p \~/.buildozer/android/platform/android-sdk/licenses
-        # Автоматически принимаем все лицензии (yes на каждый вопрос)
-        yes | \~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses
-        # Или альтернативный способ (для новых версий)
-        yes | sdkmanager --licenses
+    - name: Initialize Buildozer
+      run: buildozer init
 
-    - name: Initialize and configure Buildozer
+    - name: Configure buildozer.spec
       run: |
-        buildozer init
-        # Автоматически включаем принятие лицензий в spec
-        echo "android.accept_sdk_license = True" >> buildozer.spec
-        # Основные настройки (можно подправить)
         sed -i 's/title = .*/title = Три Кота Аэрохоккей/' buildozer.spec
         sed -i 's/package.name = .*/package.name = trikotahockey/' buildozer.spec
         sed -i 's/source.include_exts = .*/source.include_exts = py,png,jpg,kv,atlas,wav,mp3,json/' buildozer.spec
         sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0/' buildozer.spec
         sed -i 's/orientation = .*/orientation = landscape/' buildozer.spec
         sed -i 's/fullscreen = .*/fullscreen = 1/' buildozer.spec
+        echo "android.accept_sdk_license = True" >> buildozer.spec
+
+    - name: Download Android SDK (to create sdkmanager)
+      run: buildozer android update --sdk # это скачает SDK без полной сборки
+
+    - name: Accept all Android SDK licenses
+      run: |
+        # Теперь sdkmanager уже существует
+        yes | \~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses || true
+        yes | \~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
     - name: Build APK
       run: buildozer android debug
