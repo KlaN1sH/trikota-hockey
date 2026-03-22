@@ -34,14 +34,25 @@ jobs:
         sed -i 's/fullscreen = .*/fullscreen = 1/' buildozer.spec
         echo "android.accept_sdk_license = True" >> buildozer.spec
 
-    - name: Download Android SDK (to create sdkmanager)
-      run: buildozer android update --sdk # это скачает SDK без полной сборки
-
-    - name: Accept all Android SDK licenses
+    - name: Download Android SDK and accept licenses
       run: |
-        # Теперь sdkmanager уже существует
-        yes | \~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses || true
-        yes | \~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        # Устанавливаем переменные окружения
+        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        
+        # Создаём папки заранее
+        mkdir -p $ANDROID_HOME/cmdline-tools
+        
+        # Скачиваем command line tools (это создаст sdkmanager)
+        wget -O commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip commandlinetools.zip -d $ANDROID_HOME/cmdline-tools
+        mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+        
+        # Принимаем все лицензии
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+        
+        # Скачиваем необходимые пакеты (build-tools, platform-tools и т.д.)
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
     - name: Build APK
       run: buildozer android debug
