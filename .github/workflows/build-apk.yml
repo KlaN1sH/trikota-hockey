@@ -16,21 +16,35 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install Buildozer
+    - name: Install Buildozer and dependencies
       run: |
         python -m pip install --upgrade pip
         pip install buildozer cython==0.29.37 kivy==2.3.0
 
-    - name: Configure and build APK
+    - name: Accept all Android SDK licenses
+      run: |
+        # Создаём директорию для лицензий
+        mkdir -p \~/.buildozer/android/platform/android-sdk/licenses
+        # Автоматически принимаем все лицензии (yes на каждый вопрос)
+        yes | \~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager --licenses
+        # Или альтернативный способ (для новых версий)
+        yes | sdkmanager --licenses
+
+    - name: Initialize and configure Buildozer
       run: |
         buildozer init
+        # Автоматически включаем принятие лицензий в spec
+        echo "android.accept_sdk_license = True" >> buildozer.spec
+        # Основные настройки (можно подправить)
         sed -i 's/title = .*/title = Три Кота Аэрохоккей/' buildozer.spec
         sed -i 's/package.name = .*/package.name = trikotahockey/' buildozer.spec
         sed -i 's/source.include_exts = .*/source.include_exts = py,png,jpg,kv,atlas,wav,mp3,json/' buildozer.spec
         sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0/' buildozer.spec
         sed -i 's/orientation = .*/orientation = landscape/' buildozer.spec
         sed -i 's/fullscreen = .*/fullscreen = 1/' buildozer.spec
-        buildozer android debug
+
+    - name: Build APK
+      run: buildozer android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
